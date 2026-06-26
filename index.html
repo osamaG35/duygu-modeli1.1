@@ -119,7 +119,7 @@
                 
                 // KESİN ÇÖZÜM: Uzun link yerine göreceli yol kullanıyoruz. 
                 // model.json ve .bin dosyaları index.html ile AYNI klasörde olmalı.
-                model = await tf.loadLayersModel('./model.json');
+                model = await tf.loadLayersModel('./model.json?t=' + Date.now());
                 
                 loadingTxt.style.display = 'none';
                 resultTxt.innerText = "Model Hazır! Yayındasınız.";
