@@ -1,185 +1,514 @@
 <!DOCTYPE html>
 <html lang="tr">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Canlı Duygu Analizi (V8 - Fonksiyonel)</title>
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.20.0/dist/tf.min.js"></script>
-    <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #121212;
-            color: #ffffff;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-            margin: 0;
-            padding: 20px;
-        }
-        h1 { margin-bottom: 5px; color: #00adb5; }
-        p { color: #888; margin-bottom: 20px; }
-        .container {
-            position: relative;
-            width: 400px;
-            height: 400px;
-            border-radius: 12px;
-            overflow: hidden;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.5);
-            border: 2px solid #333;
-        }
-        video {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            transform: scaleX(-1); /* Ayna görüntüsü */
-        }
-        .status-box {
-            margin-top: 20px;
-            padding: 15px 30px;
-            border-radius: 8px;
-            font-size: 24px;
-            font-weight: bold;
-            background-color: #1e1e1e;
-            border: 1px solid #444;
-            min-width: 200px;
-            text-align: center;
-        }
-        #loading-text {
-            color: #ffb703;
-            font-size: 18px;
-            margin-top: 10px;
-        }
-        /* Hata Mesajı Kutusu */
-        #error-log {
-            display: none;
-            margin-top: 20px;
-            padding: 15px;
-            background-color: #ff4d4d;
-            color: white;
-            border-radius: 8px;
-            max-width: 500px;
-            width: 90%;
-            word-wrap: break-word;
-            font-family: monospace;
-            font-size: 14px;
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>bugün nasılsın canım</title>
+<script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.js"></script>
+<style>
+  :root {
+    --bg: #1a0e14;
+    --bg-elevated: #25131b;
+    --bg-card: #2e1620;
+    --line: #4a1f30;
+    --line-bright: #6b2a44;
+    --text: #ffeef3;
+    --text-dim: #d9a3b8;
+    --text-faint: #8c5a6d;
+    --accent: #ff5c8a;
+    --accent-deep: #e0356b;
+    --pulse: #ffb3c6;
+    --mono: 'JetBrains Mono', 'SF Mono', 'Courier New', monospace;
+    --sans: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { background: var(--bg); color: var(--text); font-family: var(--sans); min-height: 100vh; }
+  body { display: flex; flex-direction: column; align-items: center; padding: 28px 20px 40px; background: radial-gradient(ellipse 120% 60% at 50% 0%, #3a1826 0%, var(--bg) 70%); }
+  .page { width: 100%; max-width: 480px; }
+
+  .header { text-align: center; margin-bottom: 22px; }
+  .heart { font-size: 28px; margin-bottom: 6px; }
+  h1 { font-size: 23px; font-weight: 600; line-height: 1.35; color: var(--text); }
+  .sub { margin-top: 6px; font-size: 14px; color: var(--text-dim); }
+
+  .status-bar { display: flex; align-items: center; gap: 10px; padding: 12px 16px; background: var(--bg-elevated); border: 1px solid var(--line); border-radius: 14px; margin-bottom: 18px; font-size: 12.5px; color: var(--text-dim); }
+  .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-faint); flex-shrink: 0; }
+  .status-dot.loading { background: var(--pulse); animation: blink 1s infinite; }
+  .status-dot.ready { background: #6ee7b7; }
+  .status-dot.error { background: var(--accent); }
+  @keyframes blink { 50% { opacity: 0.3; } }
+
+  .camera-wrap { position: relative; width: 100%; aspect-ratio: 4/3; background: var(--bg-card); border: 1px solid var(--line); border-radius: 20px; overflow: hidden; margin-bottom: 14px; }
+  video, canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; }
+  video { transform: scaleX(-1); }
+  canvas { transform: scaleX(-1); }
+  .placeholder { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; color: var(--text-faint); font-size: 13px; text-align: center; padding: 24px; }
+  .start-btn { background: var(--accent); color: #2a0816; border: none; border-radius: 14px; padding: 13px 26px; font-size: 14.5px; font-weight: 600; font-family: var(--sans); cursor: pointer; }
+  .start-btn:hover { filter: brightness(1.08); }
+
+  .alt-row { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; }
+  .alt-line { flex: 1; height: 1px; background: var(--line); }
+  .alt-text { font-size: 12px; color: var(--text-faint); white-space: nowrap; }
+  .upload-label { display: block; text-align: center; padding: 13px; background: var(--bg-elevated); border: 1px solid var(--line); border-radius: 14px; font-size: 13.5px; color: var(--text-dim); cursor: pointer; margin-bottom: 18px; }
+  .upload-label:hover { border-color: var(--line-bright); color: var(--text); }
+  .upload-label input[type=file] { display: none; }
+
+  .result-card { background: var(--bg-card); border: 1px solid var(--line); border-radius: 18px; padding: 22px; margin-bottom: 16px; }
+  .result-main { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 18px; }
+  .result-emotion { font-size: 26px; font-weight: 700; color: var(--text); }
+  .result-confidence { font-size: 13px; color: var(--text-dim); }
+  .bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 9px; }
+  .bar-label { font-size: 12px; color: var(--text-dim); width: 56px; flex-shrink: 0; }
+  .bar-track { flex: 1; height: 7px; background: var(--bg-elevated); border-radius: 4px; overflow: hidden; }
+  .bar-fill { height: 100%; background: var(--pulse); border-radius: 4px; transition: width 0.25s ease; }
+  .bar-fill.top { background: var(--accent); }
+  .bar-pct { font-size: 11px; color: var(--text-faint); width: 36px; text-align: right; flex-shrink: 0; }
+
+  .send-btn { width: 100%; margin-top: 18px; background: var(--accent-deep); color: #ffeef3; border: none; border-radius: 14px; padding: 15px; font-size: 15px; font-weight: 600; font-family: var(--sans); cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; }
+  .send-btn:hover { filter: brightness(1.1); }
+  .send-btn:disabled { background: var(--bg-elevated); color: var(--text-faint); cursor: not-allowed; }
+
+  .song-card { background: linear-gradient(135deg, #3a1626, #2e1620); border: 1px solid var(--accent); border-radius: 18px; padding: 22px; margin-top: 16px; display: none; text-align: center; }
+  .song-card.show { display: block; animation: slide-in 0.35s ease; }
+  @keyframes slide-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+  .song-label { font-size: 12px; color: var(--pulse); margin-bottom: 10px; }
+  .song-title { font-size: 19px; font-weight: 700; margin-bottom: 4px; color: var(--text); }
+  .song-artist { font-size: 14px; color: var(--text-dim); }
+
+  .poem-card { background: linear-gradient(135deg, #2e1620, #3a1826); border: 1px solid var(--line-bright); border-radius: 18px; padding: 22px; margin-top: 16px; display: none; text-align: center; }
+  .poem-card.show { display: block; animation: slide-in 0.35s ease; }
+  .poem-label { font-size: 13px; color: var(--pulse); margin-bottom: 14px; }
+  .poem-btn { background: var(--accent); color: #2a0816; border: none; border-radius: 14px; padding: 13px 26px; font-size: 14.5px; font-weight: 600; font-family: var(--sans); cursor: pointer; }
+  .poem-btn:hover { filter: brightness(1.08); }
+  .poem-btn:disabled { background: var(--bg-elevated); color: var(--text-faint); cursor: not-allowed; }
+  .poem-text { margin-top: 16px; font-size: 14.5px; line-height: 1.8; color: var(--text); white-space: pre-line; text-align: left; }
+
+  .esp-status { margin-top: 14px; padding: 11px 15px; background: var(--bg-elevated); border: 1px solid var(--line); border-radius: 12px; font-size: 12px; color: var(--text-faint); text-align: center; }
+
+  .footer-note { margin-top: 22px; font-size: 11px; color: var(--text-faint); text-align: center; line-height: 1.6; }
+</style>
 </head>
 <body>
 
-    <h1>Canlı Duygu Tanıma</h1>
-    <p>Model v8 (Fonksiyonel Mimari Test Sayfası)</p>
+<div class="page">
+  <div class="header">
+    <div class="heart">♡</div>
+    <h1>bugün nasıl hissediyorsun canım?</h1>
+    <div class="sub">sana göre bir şarkı bulayım</div>
+  </div>
 
-    <div class="container">
-        <video id="webcam" autoplay playsinline muted></video>
+  <div class="status-bar">
+    <div class="status-dot loading" id="statusDot"></div>
+    <span id="statusText">hazırlanıyorum...</span>
+  </div>
+
+  <div class="camera-wrap" id="cameraWrap">
+    <video id="video" autoplay muted playsinline></video>
+    <canvas id="overlay"></canvas>
+    <div class="placeholder" id="placeholder">
+      <span>yüzünü görmek istiyorum</span>
+      <button class="start-btn" id="startBtn">kamerayı aç</button>
     </div>
+  </div>
 
-    <div id="loading-text">Sistem başlatılıyor, lütfen bekleyin...</div>
-    <div id="result" class="status-box">---</div>
-    
-    <div id="error-log"></div>
+  <div class="alt-row">
+    <div class="alt-line"></div>
+    <span class="alt-text">ya da</span>
+    <div class="alt-line"></div>
+  </div>
 
-    <script>
-        const video = document.getElementById('webcam');
-        const resultTxt = document.getElementById('result');
-        const loadingTxt = document.getElementById('loading-text');
-        const errorLog = document.getElementById('error-log');
+  <label class="upload-label" for="fileInput">
+    bir fotoğrafını yükle
+    <input type="file" id="fileInput" accept="image/*">
+  </label>
 
-        let model;
-        const EMOTIONS = ['Kızgın (Angry)', 'Mutlu (Happy)', 'Üzgün (Sad)', 'Nötr (Neutral)'];
+  <div class="result-card">
+    <div class="result-main">
+      <span class="result-emotion" id="resultEmotion">—</span>
+      <span class="result-confidence" id="resultConfidence"></span>
+    </div>
+    <div id="barsContainer"></div>
+    <button class="send-btn" id="sendBtn" disabled>gönder ♡</button>
+  </div>
 
-        // Hata Gösterme Fonksiyonu
-        function showError(msg) {
-            loadingTxt.style.display = 'none';
-            errorLog.style.display = 'block';
-            errorLog.innerText = "Hata Detayı:\n" + msg;
-            console.error(msg);
+  <div class="song-card" id="songCard">
+    <div class="song-label">sana bunu dinletmek istiyorum</div>
+    <div class="song-title" id="songTitle">—</div>
+    <div class="song-artist" id="songArtist">—</div>
+  </div>
+
+  <div class="poem-card" id="poemCard">
+    <div class="poem-label">sana bir şey yazmak istiyorum ♡</div>
+    <button class="poem-btn" id="poemBtn">şiir ister misin?</button>
+    <div class="poem-text" id="poemText"></div>
+  </div>
+
+  <div class="esp-status" id="espStatus">bağlantı bekleniyor...</div>
+
+  <div class="footer-note">her şey sana özel · seni düşünerek yapıldı</div>
+</div>
+
+<script>
+  const TURKCE_ISIMLER = { angry: 'Kızgın', happy: 'Mutlu', neutral: 'Sakin', sad: 'Üzgün' };
+
+  // ============================================================
+  // PLACEHOLDER ŞARKI LİSTESİ
+  // Gerçek listeyi buraya ekleyeceksin.
+  // ============================================================
+  const SARKI_LISTESI = {
+    happy: [
+      { title: "Dynamite", artist: "BTS" },
+      { title: "Butter", artist: "BTS" },
+      { title: "Permission to Dance", artist: "BTS" },
+    ],
+    sad: [
+      { title: "Spring Day", artist: "BTS" },
+      { title: "The Truth Untold", artist: "BTS" },
+    ],
+    angry: [
+      { title: "ON", artist: "BTS" },
+      { title: "MIC Drop", artist: "BTS" },
+    ],
+    neutral: [
+      { title: "Life Goes On", artist: "BTS" },
+      { title: "Magic Shop", artist: "BTS" },
+    ],
+  };
+
+  function rastgeleSarkiSec(duygu) {
+    const liste = SARKI_LISTESI[duygu] || [];
+    if (liste.length === 0) return { title: "Liste boş", artist: "—" };
+    return liste[Math.floor(Math.random() * liste.length)];
+  }
+
+  let model = null;
+  let classNames = ['angry', 'happy', 'neutral', 'sad'];
+  let faceApiReady = false;
+  let predictionLoop = null;
+  let lastPrediction = null;
+
+  // ============================================================
+  // ESP32'NİN IP ADRESİ - kendi ESP32'nin Access Point IP'siyle güncelle
+  // ESP32 Access Point modunda genelde 192.168.4.1 olur
+  // ============================================================
+  const ESP32_BASE_URL = 'http://192.168.4.1';
+
+  const statusDot = document.getElementById('statusDot');
+  const statusText = document.getElementById('statusText');
+  const video = document.getElementById('video');
+  const overlay = document.getElementById('overlay');
+  const placeholder = document.getElementById('placeholder');
+  const startBtn = document.getElementById('startBtn');
+  const fileInput = document.getElementById('fileInput');
+  const resultEmotion = document.getElementById('resultEmotion');
+  const resultConfidence = document.getElementById('resultConfidence');
+  const barsContainer = document.getElementById('barsContainer');
+  const sendBtn = document.getElementById('sendBtn');
+  const songCard = document.getElementById('songCard');
+  const songTitle = document.getElementById('songTitle');
+  const songArtist = document.getElementById('songArtist');
+  const espStatus = document.getElementById('espStatus');
+  const poemCard = document.getElementById('poemCard');
+  const poemBtn = document.getElementById('poemBtn');
+  const poemText = document.getElementById('poemText');
+
+  // ============================================================
+  // GEMINI API - ucretsiz katman ile sevgi dolu siir/mesaj uretimi
+  // ÖNEMLİ: Bu key tarayıcı kodunda görünür durumda. Bu proje kişisel
+  // bir hediye olduğu için kabul edilebilir bir risk, ama kodunu
+  // başka biriyle paylaşma.
+  // ============================================================
+  const GEMINI_API_KEY = 'BURAYA_GEMINI_API_KEYINI_YAPISTIR';
+  const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
+
+  async function siirIste(duygu) {
+    poemBtn.disabled = true;
+    poemBtn.textContent = 'yazıyorum...';
+    poemText.textContent = '';
+
+    const duyguTr = TURKCE_ISIMLER[duygu] || duygu;
+    const prompt = `Sevgilim için kısa (4-6 satır), samimi ve sevgi dolu bir şiir yaz. ` +
+      `Şu an "${duyguTr}" hissindeyim. Şiir Türkçe olsun, sıcak ve içten bir dille, ` +
+      `klişelerden uzak, gerçek bir duygu taşısın. Sadece şiiri yaz, başka açıklama ekleme.`;
+
+    try {
+      const response = await fetch(GEMINI_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }]
+        })
+      });
+
+      const data = await response.json();
+      const siir = data?.candidates?.[0]?.content?.parts?.[0]?.text || 'bir şeyler ters gitti, tekrar dene ♡';
+
+      poemText.textContent = siir.trim();
+      poemBtn.style.display = 'none';
+    } catch (err) {
+      poemText.textContent = 'sana ulaşamadım, internet bağlantını kontrol et ♡';
+      poemBtn.disabled = false;
+      poemBtn.textContent = 'şiir ister misin?';
+    }
+  }
+
+  poemBtn.addEventListener('click', () => {
+    if (lastPrediction) siirIste(lastPrediction.emotion);
+  });
+
+  function setStatus(state, text) {
+    statusDot.className = 'status-dot ' + state;
+    statusText.textContent = text;
+  }
+
+  function renderBars(probs) {
+    let sorted = classNames.map((name, i) => ({ name, prob: probs[i] }))
+      .sort((a, b) => b.prob - a.prob);
+
+    // ---- NÖTR DÜZELTMESİ ----
+    // Model "neutral" derken çoğu zaman gerçekte hafif üzgün/kızgın durumları
+    // da nötr'e kaydırma eğiliminde. Eğer en yüksek tahmin "neutral" ise ve
+    // ikinci sıradaki tahminle arası az ise (model kararsızsa), ikinci
+    // tahmini öne çıkarıyoruz. "Neutral" sadece gerçekten yüksek bir
+    // güvenle (örn. %55+) öne çıktığında kabul ediliyor.
+    const NOTR_GUVEN_ESIGI = 0.55;
+    const KARARSIZLIK_FARKI = 0.12;
+
+    if (sorted[0].name === 'neutral' && sorted[0].prob < NOTR_GUVEN_ESIGI) {
+      const fark = sorted[0].prob - sorted[1].prob;
+      if (fark < KARARSIZLIK_FARKI && sorted[1].name !== 'neutral') {
+        // ikinci tahmini öne al
+        [sorted[0], sorted[1]] = [sorted[1], sorted[0]];
+      }
+    }
+
+    resultEmotion.textContent = TURKCE_ISIMLER[sorted[0].name] || sorted[0].name;
+    resultConfidence.textContent = `%${(sorted[0].prob * 100).toFixed(1)} eminim`;
+    lastPrediction = { emotion: sorted[0].name, confidence: sorted[0].prob };
+    sendBtn.disabled = false;
+
+    barsContainer.innerHTML = sorted.map((item, i) => `
+      <div class="bar-row">
+        <span class="bar-label">${TURKCE_ISIMLER[item.name] || item.name}</span>
+        <div class="bar-track"><div class="bar-fill ${i === 0 ? 'top' : ''}" style="width:${(item.prob * 100).toFixed(1)}%"></div></div>
+        <span class="bar-pct">${(item.prob * 100).toFixed(0)}%</span>
+      </div>
+    `).join('');
+  }
+
+  async function loadModel() {
+    try {
+      setStatus('loading', 'hazırlanıyorum...');
+      const tfRef = (typeof tf !== 'undefined') ? tf : faceapi.tf;
+      window.tf = tfRef;
+
+      model = await tfRef.loadLayersModel('https://raw.githubusercontent.com/osamaG35/duygu-modeli/refs/heads/main/model.json');
+      setStatus('loading', 'biraz daha sabret...');
+
+      await faceapi.nets.tinyFaceDetector.loadFromUri('https://cdn.jsdelivr.net/gh/vladmandic/face-api/model/');
+      faceApiReady = true;
+
+      setStatus('ready', 'hazırım, kamerayı aç');
+    } catch (err) {
+      console.error(err);
+      setStatus('error', 'bir şeyler ters gitti: ' + err.message);
+    }
+  }
+
+  fetch('https://raw.githubusercontent.com/osamaG35/duygu-modeli/refs/heads/main/class_names_4cat.json')
+    .then(r => r.json())
+    .then(names => { classNames = names; })
+    .catch(() => {});
+
+  loadModel();
+
+  startBtn.addEventListener('click', async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 480, height: 360, facingMode: 'user' } });
+      video.srcObject = stream;
+      placeholder.style.display = 'none';
+      video.onloadedmetadata = () => {
+        overlay.width = video.videoWidth;
+        overlay.height = video.videoHeight;
+        startPredictionLoop();
+      };
+    } catch (err) {
+      setStatus('error', 'kameraya izin vermedin');
+    }
+  });
+
+  function startPredictionLoop() {
+    if (predictionLoop) clearInterval(predictionLoop);
+    predictionLoop = setInterval(async () => {
+      if (!model || !faceApiReady) return;
+      await predictFromVideo();
+    }, 600);
+  }
+
+  async function predictFromVideo() {
+    const detection = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 224 }));
+    const ctx = overlay.getContext('2d');
+    ctx.clearRect(0, 0, overlay.width, overlay.height);
+
+    if (!detection) {
+      setStatus('ready', 'seni arıyorum...');
+      return;
+    }
+    setStatus('ready', 'seni görüyorum');
+
+    const box = detection.box;
+    ctx.strokeStyle = '#ff5c8a';
+    ctx.lineWidth = 3;
+    ctx.strokeRect(box.x, box.y, box.width, box.height);
+
+    const probs = await runModelOnFaceBox(video, box);
+    if (probs) renderBars(probs);
+  }
+
+  async function runModelOnFaceBox(sourceEl, box) {
+    const pad = box.width * 0.1;
+    const x0 = Math.max(0, box.x - pad);
+    const y0 = Math.max(0, box.y - pad);
+    const w = Math.min(sourceEl.videoWidth - x0, box.width + pad * 2);
+    const h = Math.min(sourceEl.videoHeight - y0, box.height + pad * 2);
+
+    const cropCanvas = document.createElement('canvas');
+    cropCanvas.width = 48;
+    cropCanvas.height = 48;
+    const cctx = cropCanvas.getContext('2d');
+    cctx.drawImage(sourceEl, x0, y0, w, h, 0, 0, 48, 48);
+
+    const imageData = cctx.getImageData(0, 0, 48, 48);
+    const gray = new Float32Array(48 * 48);
+    for (let i = 0; i < 48 * 48; i++) {
+      const r = imageData.data[i * 4], g = imageData.data[i * 4 + 1], b = imageData.data[i * 4 + 2];
+      gray[i] = (0.299 * r + 0.587 * g + 0.114 * b) / 255.0;
+    }
+
+    const inputTensor = window.tf.tensor(gray, [1, 48, 48, 1]);
+    const prediction = model.predict(inputTensor);
+    const probs = await prediction.data();
+    inputTensor.dispose();
+    prediction.dispose();
+    return Array.from(probs);
+  }
+
+  // ============================================================
+  // FOTOĞRAF YÜKLEME İLE TEST
+  // ============================================================
+  fileInput.addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file || !model || !faceApiReady) return;
+
+    const img = new Image();
+    img.onload = async () => {
+      const detection = await faceapi.detectSingleFace(img, new faceapi.TinyFaceDetectorOptions({ inputSize: 224 }));
+      if (!detection) {
+        setStatus('error', 'fotoğrafında seni bulamadım');
+        return;
+      }
+      const probs = await runModelOnFaceBox(img, detection.box);
+      if (probs) renderBars(probs);
+      setStatus('ready', 'fotoğrafını gördüm');
+    };
+    img.src = URL.createObjectURL(file);
+  });
+
+  // ============================================================
+  // ESP32'YE GÖNDERME
+  // ============================================================
+  sendBtn.addEventListener('click', async () => {
+    if (!lastPrediction) return;
+    if (predictionLoop) clearInterval(predictionLoop);
+
+    espStatus.textContent = 'gönderiyorum...';
+
+    try {
+      const response = await fetch(`${ESP32_BASE_URL}/api/duygu`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          emotion: lastPrediction.emotion,
+          confidence: lastPrediction.confidence
+        })
+      });
+
+      if (response.ok) {
+        espStatus.textContent = 'gönderdim, ekrana bak ♡';
+        pollForConfirmation();
+      } else {
+        espStatus.textContent = 'gönderemedim (hata: ' + response.status + ')';
+      }
+    } catch (err) {
+      espStatus.textContent = 'bağlanamadım: ' + err.message;
+    }
+  });
+
+  function pollForConfirmation() {
+    const interval = setInterval(async () => {
+      try {
+        const response = await fetch(`${ESP32_BASE_URL}/api/durum`);
+        const data = await response.json();
+
+        if (data.onaylandi) {
+          clearInterval(interval);
+          espStatus.textContent = 'onayladın, şarkını seçiyorum...';
+
+          const sarki = rastgeleSarkiSec(lastPrediction.emotion);
+          songTitle.textContent = sarki.title;
+          songArtist.textContent = sarki.artist;
+          songCard.classList.add('show');
+
+          await fetch(`${ESP32_BASE_URL}/api/sarki`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ title: sarki.title, artist: sarki.artist })
+          });
+
+          espStatus.textContent = 'işte şarkın ♡';
+
+          // şiir kartını da göster - kullanıcı isterse şiir de alabilir
+          poemCard.classList.add('show');
+          poemBtn.style.display = 'inline-block';
+          poemBtn.disabled = false;
+          poemBtn.textContent = 'şiir ister misin?';
+          poemText.textContent = '';
+
+          pollForReset(); // şarkı gösterilirken de sıfırlama butonunu dinle
+        } else if (data.sifirlandi) {
+          clearInterval(interval);
+          espStatus.textContent = 'tekrar deniyoruz, kameraya bak';
+          songCard.classList.remove('show');
+          poemCard.classList.remove('show');
+          startPredictionLoop();
         }
+      } catch (err) {
+        // sessizce devam
+      }
+    }, 1000);
+  }
 
-        // 1. Kamerayı Başlat
-        async function setupWebcam() {
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({
-                    video: { width: 400, height: 400, facingMode: 'user' },
-                    audio: false
-                });
-                video.srcObject = stream;
-                return new Promise((resolve) => video.onloadedmetadata = () => resolve());
-            } catch (err) {
-                showError("Kamera açma başarısız oldu. İzin verdiğinizden emin olun: " + err.message);
-            }
+  // şarkı ekranda gösterilirken, kullanıcı sıfırlama butonuna basarsa
+  // (canım sıkıldıysa) bunu yakalayıp baştan başlatan döngü
+  function pollForReset() {
+    const interval = setInterval(async () => {
+      try {
+        const response = await fetch(`${ESP32_BASE_URL}/api/durum`);
+        const data = await response.json();
+
+        if (data.sifirlandi) {
+          clearInterval(interval);
+          espStatus.textContent = 'tekrar deniyoruz, kameraya bak';
+          songCard.classList.remove('show');
+          poemCard.classList.remove('show');
+          startPredictionLoop();
         }
+      } catch (err) {
+        // sessizce devam
+      }
+    }, 1000);
+  }
+</script>
 
-        // 2. Modeli Yükle
-        async function loadModel() {
-            try {
-                loadingTxt.innerText = "Model dosyaları GitHub'dan çekiliyor...";
-                
-                // KESİN ÇÖZÜM: Uzun link yerine göreceli yol kullanıyoruz. 
-                // model.json ve .bin dosyaları index.html ile AYNI klasörde olmalı.
-                model = await tf.loadLayersModel('./model.json?t=' + Date.now());
-                
-                loadingTxt.style.display = 'none';
-                resultTxt.innerText = "Model Hazır! Yayındasınız.";
-                resultTxt.style.color = "#00adb5";
-                
-                // Tahmin döngüsünü başlat
-                trackEmotions();
-            } catch (err) {
-                showError("Model yüklenirken hata oluştu!\n" + err.message + 
-                          "\n\nİpucu: model.json içindeki 'batch_shape' kelimesini 'batch_input_shape' yaptığınızdan emin olun.");
-            }
-        }
-
-        // 3. Canlı Tahmin Döngüsü
-        async function trackEmotions() {
-            if (!model) return;
-
-            tf.tidy(() => {
-                // Kameradan görüntüyü al
-                let img = tf.browser.fromPixels(video);
-                
-                // 48x48 boyutuna küçült
-                img = tf.image.resizeBilinear(img, [48, 48]);
-                
-                // Gri tona çevir (3 kanaldan 1 kanala düşür)
-                img = img.mean(2).expandDims(-1);
-                
-                // Normalize et (0-1 arasına çek)
-                img = img.toFloat().div(255.0);
-                
-                // Batch boyutu ekle -> [1, 48, 48, 1]
-                img = img.expandDims(0);
-
-                // Modeli besle ve tahmin al
-                const prediction = model.predict(img);
-                const scores = prediction.dataSync();
-                
-                // En yüksek skorlu duyguyu bul
-                const maxIndex = prediction.argMax(-1).dataSync()[0];
-                
-                // Ekrana yazdır
-                resultTxt.innerText = EMOTIONS[maxIndex];
-                
-                // Duyguya göre renk değiştir (Görsel efekt)
-                if(maxIndex === 1) resultTxt.style.color = "#4caf50"; // Mutlu -> Yeşil
-                else if(maxIndex === 0 || maxIndex === 2) resultTxt.style.color = "#f44336"; // Kızgın/Üzgün -> Kırmızı
-                else resultTxt.style.color = "#ffffff"; // Nötr -> Beyaz
-            });
-
-            // Her 200 milisaniyede bir tekrarla (Kamerayı kasmaz, akıcı çalışır)
-            setTimeout(trackEmotions, 200);
-        }
-
-        // Her şeyi sırayla çalıştır
-        async function init() {
-            await setupWebcam();
-            await loadModel();
-        }
-
-        window.onload = init;
-    </script>
 </body>
 </html>
