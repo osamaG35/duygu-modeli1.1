@@ -188,10 +188,11 @@
   let lastPrediction = null;
 
   // ============================================================
-  // ESP32'NİN IP ADRESİ - kendi ESP32'nin Access Point IP'siyle güncelle
-  // ESP32 Access Point modunda genelde 192.168.4.1 olur
+  // ESP32'NİN IP ADRESİ - ESP32 telefonun hotspotuna client olarak
+  // baglaniyor (Station modu). IP adresi LCD ekranda gösteriliyor,
+  // her baglantida degisebilir - asagiyi ona göre güncelle.
   // ============================================================
-  const ESP32_BASE_URL = 'http://192.168.4.1';
+  const ESP32_BASE_URL = 'http://192.168.1.106';
 
   const statusDot = document.getElementById('statusDot');
   const statusText = document.getElementById('statusText');
